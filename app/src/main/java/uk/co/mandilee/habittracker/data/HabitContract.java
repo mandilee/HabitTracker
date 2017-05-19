@@ -23,10 +23,13 @@ class HabitContract {
 
         final static String _ID = BaseColumns._ID;
 
+        // column to record the type of drink i.e. water, beer, coca cola
         final static String COLUMN_DRINK_TYPE = "type";
 
+        // column to record how much drink in millilitres i.e. 250ml
         final static String COLUMN_DRINK_MILLIMETRES = "millilitres";
 
+        // column for date and time of the drink, auto-set on insertion
         final static String COLUMN_DRINK_DATETIME = "datetime";
     }
 

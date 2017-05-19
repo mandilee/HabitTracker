@@ -9,45 +9,45 @@ import uk.co.mandilee.habittracker.data.HabitContract.DrinkEntry;
 class DbHelper extends SQLiteOpenHelper {
 
     /**
-     * Name of the database file
+     * Database name
      */
     private static final String DATABASE_NAME = "shelter.db";
 
     /**
-     * Database version. If you change the database schema, you must increment the database version.
+     * Database version
      */
     private static final int DATABASE_VERSION = 1;
 
     /**
-     * Constructs a new instance of {@link DbHelper}.
-     *
-     * @param context of the app
+     * New instance of {@link DbHelper}.
+     * @param context of app
      */
     DbHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
     /**
-     * This is called when the database is created for the first time.
+     * Create the database the first time round
      */
     @Override
     public void onCreate(SQLiteDatabase db) {
-        // Create a String that contains the SQL statement to create the drinks table
+        // The sql to create the table in a string
         String SQL_CREATE_DRINKS_TABLE = "CREATE TABLE " + DrinkEntry.TABLE_NAME + " ("
                 + DrinkEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + DrinkEntry.COLUMN_DRINK_TYPE + " TEXT, "
                 + DrinkEntry.COLUMN_DRINK_MILLIMETRES + " INTEGER NOT NULL, "
-                + DrinkEntry.COLUMN_DRINK_DATETIME + " DATETIME);";
+                + DrinkEntry.COLUMN_DRINK_DATETIME + " DATETIME DEFAULT CURRENT_TIMESTAMP);";
 
-        // Execute the SQL statement
+        // run the sql statement
         db.execSQL(SQL_CREATE_DRINKS_TABLE);
     }
 
     /**
-     * This is called when the database needs to be upgraded.
+     * Upgrade the database if required
      */
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // The database is still at version 1, so there's nothing to do be done here.
+        // Nothing to do
+        // Database is still version one
     }
 }

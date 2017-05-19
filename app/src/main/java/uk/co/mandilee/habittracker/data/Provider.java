@@ -11,28 +11,37 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-
 import uk.co.mandilee.habittracker.data.HabitContract.DrinkEntry;
 
 public class
 Provider extends ContentProvider {
 
+    /**
+     * tag for log messages
+     */
     private static final String LOG_TAG = Provider.class.getSimpleName();
 
+    /**
+     * uri matcher code for drinks table
+     */
     private static final int DRINKS = 100;
 
+    /** uri matcher code for single drink in drinks table */
     private static final int DRINK_ID = 101;
 
+    /** URIMatcher object to match a content uri to a corresponding code */
     private static final UriMatcher sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
 
+    // statics run first time anything from this class is called
     static {
+        // URI provides access to multiple rows from the table
         sUriMatcher.addURI(HabitContract.CONTENT_AUTHORITY, HabitContract.PATH_DRINKS, DRINKS);
+
+        // URI to get a single row from the table
         sUriMatcher.addURI(HabitContract.CONTENT_AUTHORITY, HabitContract.PATH_DRINKS + "/#", DRINK_ID);
     }
 
+    /** database helper object */
     private DbHelper mDbHelper;
 
     @Override
@@ -43,27 +52,37 @@ Provider extends ContentProvider {
 
     @NonNull
     @Override
-    public Cursor query(@NonNull Uri uri, @Nullable String[] projection, @Nullable String selection, @Nullable String[] selectionArguments, @Nullable String sortOrder) {
+    public Cursor query(@NonNull Uri uri, @Nullable String[] projection, @Nullable String selection,
+                        @Nullable String[] selectionArguments, @Nullable String sortOrder) {
+
+        // get readable database
         SQLiteDatabase db = mDbHelper.getReadableDatabase();
+
+        // cursor to hold query result
         Cursor cursor;
 
+        // match uri to specific code if possible
         switch (sUriMatcher.match(uri)) {
             case DRINKS:
-                cursor = db.query(DrinkEntry.TABLE_NAME, projection, selection, selectionArguments, null, null, sortOrder);
+                cursor = db.query(DrinkEntry.TABLE_NAME, projection, selection, selectionArguments,
+                        null, null, sortOrder);
                 break;
 
             case DRINK_ID:
                 selection = DrinkEntry._ID + "=?";
                 selectionArguments = new String[]{String.valueOf(ContentUris.parseId(uri))};
-                cursor = db.query(DrinkEntry.TABLE_NAME, projection, selection, selectionArguments, null, null, sortOrder);
+                cursor = db.query(DrinkEntry.TABLE_NAME, projection, selection, selectionArguments,
+                        null, null, sortOrder);
                 break;
 
             default:
                 throw new IllegalArgumentException("Query failed. Unknown URI: " + uri);
         }
 
+        // if data changes, need to update cursor
         cursor.setNotificationUri(getContext().getContentResolver(), uri);
 
+        // return the cursor
         return cursor;
     }
 
@@ -94,34 +113,56 @@ Provider extends ContentProvider {
         }
     }
 
+    /** insert a drink into the database with the given values
+     * return the new content uri for the new row
+     */
     private Uri insertDrink(Uri uri, ContentValues values) {
 
+        // Check that the type is not null
+        String type = values.getAsString(DrinkEntry.COLUMN_DRINK_TYPE);
+        if (type == null) {
+            throw new IllegalArgumentException("Drink type is required");
+        }
+
+        // check millilitres is not null and greater than 0
         Integer millilitres = values.getAsInteger(DrinkEntry.COLUMN_DRINK_MILLIMETRES);
         if (millilitres == null || millilitres <= 0) {
             throw new IllegalArgumentException("Drink requires valid millilitres");
         }
 
+        // datetime is auto added. no need to check
+
+        // get writable database
         SQLiteDatabase db = mDbHelper.getWritableDatabase();
 
+        // insert drink with given values
         long id = db.insert(DrinkEntry.TABLE_NAME, null, values);
+        // id == -1 when insert failed
+        // log error and return null
         if (id == -1) {
             Log.e(LOG_TAG, "Row insertion failed for " + uri);
             return null;
         }
 
+        // tell listeners data has changed
         getContext().getContentResolver().notifyChange(uri, null);
 
+        // return new uri wuth new id appended to end
         return ContentUris.withAppendedId(uri, id);
     }
 
     @Override
-    public int update(@NonNull Uri uri, ContentValues contentValues, String selection, String[] selectionArguments) {
+    public int update(@NonNull Uri uri, ContentValues contentValues, String selection,
+                      String[] selectionArguments) {
+
         final int match = sUriMatcher.match(uri);
+
         switch (match) {
             case DRINKS:
                 return updateDrink(uri, contentValues, selection, selectionArguments);
 
             case DRINK_ID:
+                // extract the id so we know what to update
                 selection = DrinkEntry._ID + "=?";
                 selectionArguments = new String[]{String.valueOf(ContentUris.parseId(uri))};
                 return updateDrink(uri, contentValues, selection, selectionArguments);
@@ -131,7 +172,21 @@ Provider extends ContentProvider {
         }
     }
 
-    private int updateDrink(Uri uri, ContentValues values, String selection, String[] selectionArguments) {
+    /**
+     * update drinks with the given values
+     * apply to specified rows
+     * return number of rows updated successfully
+     */
+    private int updateDrink(Uri uri, ContentValues values, String selection,
+                            String[] selectionArguments) {
+
+        // Check that the type is not null
+        if (values.containsKey(DrinkEntry.COLUMN_DRINK_TYPE)) {
+            String type = values.getAsString(DrinkEntry.COLUMN_DRINK_TYPE);
+            if (type == null) {
+                throw new IllegalArgumentException("Drink type is required");
+            }
+        }
 
         if (values.containsKey(DrinkEntry.COLUMN_DRINK_MILLIMETRES)) {
             Integer millilitres = values.getAsInteger(DrinkEntry.COLUMN_DRINK_MILLIMETRES);
@@ -181,12 +236,5 @@ Provider extends ContentProvider {
         }
 
         return rowsDeleted;
-    }
-
-    private String getDateTime() {
-        SimpleDateFormat dateFormat = new SimpleDateFormat(
-                "yyyy-MM-dd HH:mm:ss", Locale.getDefault());
-        Date date = new Date();
-        return dateFormat.format(date);
     }
 }
